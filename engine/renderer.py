@@ -1,75 +1,49 @@
 """
-OpenGL renderer module for the game engine
+OpenGL renderer module for the 3D engine
 """
-import moderngl
+from PyQt5.QtWidgets import QOpenGLWidget
+from PyQt5.QtCore import Qt
+from PyQt5.QtOpenGL import QGLFormat
+import OpenGL.GL as gl
 import numpy as np
 from PIL import Image
 
-class Renderer3D:
-    def __init__(self, ctx: moderngl.Context):
-        self.ctx = ctx
-        self.programs = {}
-        self.textures = {}
-        self.vao = None
-        self.vbo = None
-        self.ibo = None
-        self.setup_default_geometry()
-        self.setup_default_shaders()
-
-    def setup_default_geometry(self):
-        """Create default geometry (triangle)"""
-        vertices = np.array([
+class OpenGLViewport(QOpenGLWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        # Устанавливаем формат OpenGL
+        format = QGLFormat()
+        format.setVersion(3, 3)
+        format.setProfile(QGLFormat.CoreProfile)
+        format.setDepth(24)
+        format.setDoubleBuffer(True)
+        self.setFormat(format)
+        
+        self.vertices = np.array([
             -0.5, -0.5, 0.0,
             0.5, -0.5, 0.0,
             0.0, 0.5, 0.0
-        ], dtype='f4')
+        ], dtype=np.float32)
         
-        indices = np.array([0, 1, 2], dtype='i4')
+    def initializeGL(self):
+        """Инициализация OpenGL контекста"""
+        gl.glEnable(gl.GL_DEPTH_TEST)
+        gl.glClearColor(0.1, 0.1, 0.1, 1.0)
         
-        self.vbo = self.ctx.buffer(vertices.tobytes())
-        self.ibo = self.ctx.buffer(indices.tobytes())
-
-    def setup_default_shaders(self):
-        """Create default shaders"""
-        self.programs['default'] = self.ctx.program(
-            vertex_shader='''
-                #version 330
-                in vec3 in_vert;
-                uniform mat4 mvp;
-                void main() {
-                    gl_Position = mvp * vec4(in_vert, 1.0);
-                }
-            ''',
-            fragment_shader='''
-                #version 330
-                out vec4 fragColor;
-                void main() {
-                    fragColor = vec4(0.3, 0.7, 1.0, 1.0);
-                }
-            '''
-        )
+    def paintGL(self):
+        """Рендеринг сцены"""
+        gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         
-        self.vao = self.ctx.simple_vertex_array(
-            self.programs['default'], 
-            self.vbo, 
-            'in_vert'
-        )
-
-    def render(self):
-        """Render the scene"""
-        self.ctx.clear(0.1, 0.1, 0.1)
-        self.vao.render()
+        # Устанавливаем цвет
+        gl.glColor3f(0.3, 0.7, 1.0)
         
-    def add_texture(self, name: str, image_path: str):
-        """Add a texture from an image file"""
-        img = Image.open(image_path).transpose(Image.FLIP_TOP_BOTTOM)
-        texture = self.ctx.texture(img.size, 4, img.tobytes())
-        texture.build_mipmaps()
-        self.textures[name] = texture
+        # Рендерим треугольник
+        gl.glBegin(gl.GL_TRIANGLES)
+        for i in range(0, len(self.vertices), 3):
+            gl.glVertex3f(self.vertices[i], self.vertices[i+1], self.vertices[i+2])
+        gl.glEnd()
         
-    def set_uniform(self, program_name: str, uniform_name: str, value):
-        """Set a uniform value in a shader program"""
-        if program_name in self.programs:
-            program = self.programs[program_name]
-            if uniform_name in program:
-                program[uniform_name].value = value
+    def resizeGL(self, width, height):
+        """Обработка изменения размера вьюпорта"""
+        gl.glViewport(0, 0, width, height)
