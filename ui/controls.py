@@ -1,5 +1,5 @@
 """
-UI controls for the game engine
+UI controls for the 3D engine
 """
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, 
@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-class EngineControlPanel(QWidget):
+class ControlPanel(QWidget):
     def __init__(self):
         super().__init__()
         self.init_ui()
